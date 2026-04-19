@@ -1,0 +1,76 @@
+{
+  "nav": {
+    "home": "Home", "browse": "Browse", "orders": "Orders",
+    "messages": "Messages", "profile": "Profile", "dashboard": "Dashboard"
+  },
+  "landing": {
+    "hero_title": "Services from your neighbors,",
+    "hero_title_2": "right around the corner.",
+    "hero_subtitle": "Book homemade food, beauty, tutoring, and more from people in your community.",
+    "search_placeholder": "Search by zip code, city, or turn on GPS",
+    "cta_customer": "Find Services Near Me",
+    "cta_host": "Start Offering Services",
+    "how_it_works": "How Loklii Works",
+    "step_browse": "Browse nearby services",
+    "step_book": "Book in seconds",
+    "step_enjoy": "Enjoy from your neighbor",
+    "featured_hosts": "Featured Hosts",
+    "categories": "What can we help with?"
+  },
+  "auth": {
+    "login": "Log In", "signup": "Sign Up", "email": "Email", "password": "Password",
+    "first_name": "First Name", "last_name": "Last Name", "phone": "Phone Number",
+    "dob": "Date of Birth", "age_requirement": "You must be 18 or older to join Loklii.",
+    "host_signup": "Sign Up as a Host", "customer_signup": "Sign Up as a Customer",
+    "two_fa": "Two-Factor Authentication", "enter_code": "Enter the 6-digit code from your authenticator app",
+    "recovery_code": "Use Recovery Code", "forgot_password": "Forgot Password?",
+    "reset_password": "Reset Password", "back_to_login": "Back to Login"
+  },
+  "host": {
+    "go_online": "Go Online", "go_offline": "Go Offline",
+    "checklist_title": "Workspace Cleaning Checklist",
+    "checklist_items": [
+      "Surfaces cleaned and sanitized",
+      "Handwashing station available",
+      "Cooking area clean and organized",
+      "Pets away from workspace (if applicable)",
+      "Proper food storage in place"
+    ],
+    "add_listing": "Add New Service",
+    "listing_title": "Service Title", "listing_desc": "Description",
+    "listing_price": "Price", "listing_prep": "Prep Time (minutes)",
+    "pending_approval": "Pending Admin Approval",
+    "earnings": "Total Earnings", "orders_completed": "Orders Completed",
+    "star_rating": "Star Rating",
+    "fee_banner": "Your account is paused. Pay the $29.99 maintenance fee to continue.",
+    "pay_fee": "Pay Now",
+    "under_review": "Your account is under review. You may submit an appeal.",
+    "appeal_submit": "Submit Appeal"
+  },
+  "listings": {
+    "price_from": "From", "book_now": "Book Now", "message_host": "Message Host",
+    "delivery_pickup": "Pickup", "delivery_self": "Host Delivers", "delivery_3p": "Delivery Available",
+    "reviews": "Reviews", "no_reviews": "No reviews yet. Be the first!",
+    "special_requests": "Special Requests or Instructions", "qty": "Quantity"
+  },
+  "orders": {
+    "status_pending": "Waiting for host", "status_accepted": "Accepted",
+    "status_preparing": "Being prepared", "status_ready": "Ready",
+    "status_picked_up": "Picked up", "status_delivered": "Delivered",
+    "status_completed": "Completed", "status_cancelled": "Cancelled",
+    "cancel_order": "Cancel Order", "leave_review": "Leave a Review",
+    "file_dispute": "File a Dispute", "dispute_window": "Disputes must be filed within 72 hours"
+  },
+  "legal": {
+    "disclaimer_title": "Health & Safety Disclaimer",
+    "disclaimer_body": "Loklii is a technology platform that connects independent service providers with customers. Loklii does not prepare, inspect, or guarantee any food, service, or product offered on this platform. Loklii is not responsible for food quality, safety, injuries, allergic reactions, or compliance with local health department regulations. Each host is an independent provider responsible for complying with all applicable local, state, and federal laws, including food handler certifications and permits. By creating an account, you acknowledge that Loklii shall not be liable to the fullest extent permitted by law for any claims arising from services booked through this platform.",
+    "agree": "I have read and agree to the Terms of Service, Privacy Policy, and Health & Safety Disclaimer.",
+    "must_agree": "You must agree to the terms to create an account."
+  },
+  "common": {
+    "save": "Save", "cancel": "Cancel", "confirm": "Confirm", "back": "Back",
+    "next": "Next", "submit": "Submit", "loading": "Loading...", "error": "Something went wrong.",
+    "online": "Online", "offline": "Offline", "verified": "Verified", "stars": "stars",
+    "report": "Report", "block": "Block", "view_profile": "View Profile"
+  }
+}

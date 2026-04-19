@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { -webkit-tap-highlight-color: transparent; }
+
+  body {
+    @apply font-sans bg-white text-gray-900 antialiased;
+    overscroll-behavior: none;
+  }
+
+  /* RTL support for Arabic */
+  [dir="rtl"] { text-align: right; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-amber text-white font-semibold px-6 py-3 rounded-xl active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-teal text-white font-semibold px-6 py-3 rounded-xl active:scale-95 transition-transform;
+  }
+  .btn-outline {
+    @apply border-2 border-amber text-amber font-semibold px-6 py-3 rounded-xl active:scale-95 transition-transform;
+  }
+  .input-field {
+    @apply w-full border border-gray-300 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-amber focus:border-transparent;
+  }
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden;
+  }
+  .section-title {
+    @apply text-2xl font-bold text-gray-900;
+  }
+  .logo-lok { @apply text-amber font-bold; }
+  .logo-lii { @apply text-gray-900 font-bold; }
+}
+
+/* Mobile bottom nav safe area */
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-top { padding-top: env(safe-area-inset-top); }

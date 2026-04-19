@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment files — never commit these
+.env
+.env.local
+.env.production
+
+# Build output
+frontend/dist/
+frontend/.vite/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Railway / Vercel
+.vercel/

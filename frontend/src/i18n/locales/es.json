@@ -1,0 +1,73 @@
+{
+  "nav": {
+    "home": "Inicio", "browse": "Explorar", "orders": "Pedidos",
+    "messages": "Mensajes", "profile": "Perfil", "dashboard": "Panel"
+  },
+  "landing": {
+    "hero_title": "Servicios de tus vecinos,",
+    "hero_title_2": "a la vuelta de la esquina.",
+    "hero_subtitle": "Reserva comida casera, belleza, tutorías y más de personas en tu comunidad.",
+    "search_placeholder": "Busca por código postal, ciudad o activa GPS",
+    "cta_customer": "Encontrar servicios cerca",
+    "cta_host": "Empezar a ofrecer servicios",
+    "how_it_works": "Cómo funciona Loklii",
+    "step_browse": "Explora servicios cercanos",
+    "step_book": "Reserva en segundos",
+    "step_enjoy": "Disfruta de tu vecino",
+    "featured_hosts": "Anfitriones Destacados",
+    "categories": "¿En qué podemos ayudarte?"
+  },
+  "auth": {
+    "login": "Iniciar sesión", "signup": "Registrarse", "email": "Correo electrónico",
+    "password": "Contraseña", "first_name": "Nombre", "last_name": "Apellido",
+    "phone": "Teléfono", "dob": "Fecha de nacimiento",
+    "age_requirement": "Debes tener 18 años o más para unirte.",
+    "host_signup": "Registrarse como Anfitrión", "customer_signup": "Registrarse como Cliente",
+    "two_fa": "Autenticación en dos pasos", "enter_code": "Ingresa el código de 6 dígitos de tu app",
+    "recovery_code": "Usar código de recuperación", "forgot_password": "¿Olvidaste tu contraseña?",
+    "reset_password": "Restablecer contraseña", "back_to_login": "Volver al inicio de sesión"
+  },
+  "host": {
+    "go_online": "Conectarse", "go_offline": "Desconectarse",
+    "checklist_title": "Lista de limpieza del espacio de trabajo",
+    "checklist_items": [
+      "Superficies limpias y desinfectadas",
+      "Estación de lavado de manos disponible",
+      "Área de cocina limpia y organizada",
+      "Mascotas alejadas del área de trabajo (si aplica)",
+      "Almacenamiento adecuado de alimentos"
+    ],
+    "add_listing": "Agregar nuevo servicio",
+    "pending_approval": "Pendiente de aprobación",
+    "fee_banner": "Tu cuenta está pausada. Paga la tarifa de mantenimiento de $29.99 para continuar.",
+    "pay_fee": "Pagar ahora",
+    "under_review": "Tu cuenta está en revisión. Puedes presentar una apelación.",
+    "appeal_submit": "Presentar apelación"
+  },
+  "listings": {
+    "price_from": "Desde", "book_now": "Reservar ahora", "message_host": "Mensaje al anfitrión",
+    "delivery_pickup": "Recoger", "delivery_self": "El anfitrión entrega", "delivery_3p": "Entrega disponible",
+    "reviews": "Reseñas", "no_reviews": "Aún no hay reseñas. ¡Sé el primero!",
+    "special_requests": "Solicitudes o instrucciones especiales", "qty": "Cantidad"
+  },
+  "orders": {
+    "status_pending": "Esperando al anfitrión", "status_accepted": "Aceptado",
+    "status_preparing": "Preparándose", "status_ready": "Listo",
+    "status_picked_up": "Recogido", "status_delivered": "Entregado",
+    "status_completed": "Completado", "status_cancelled": "Cancelado",
+    "cancel_order": "Cancelar pedido", "leave_review": "Dejar reseña",
+    "file_dispute": "Presentar disputa", "dispute_window": "Las disputas deben presentarse dentro de 72 horas"
+  },
+  "legal": {
+    "disclaimer_title": "Descargo de responsabilidad de salud y seguridad",
+    "disclaimer_body": "Loklii es una plataforma tecnológica que conecta proveedores de servicios independientes con clientes. Loklii no es responsable de la calidad de los alimentos, seguridad, lesiones, reacciones alérgicas o cumplimiento de las regulaciones del departamento de salud. Cada anfitrión es un proveedor independiente responsable de cumplir con todas las leyes locales, estatales y federales aplicables.",
+    "agree": "He leído y acepto los Términos de servicio, la Política de privacidad y el Descargo de responsabilidad.",
+    "must_agree": "Debes aceptar los términos para crear una cuenta."
+  },
+  "common": {
+    "save": "Guardar", "cancel": "Cancelar", "confirm": "Confirmar", "back": "Atrás",
+    "next": "Siguiente", "submit": "Enviar", "loading": "Cargando...", "error": "Algo salió mal.",
+    "online": "En línea", "offline": "Fuera de línea", "verified": "Verificado", "stars": "estrellas",
+    "report": "Reportar", "block": "Bloquear", "view_profile": "Ver perfil"
+  }
+}
