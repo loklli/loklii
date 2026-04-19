@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import BottomNav from './components/common/BottomNav';
 import { requestPushPermission, onForegroundMessage } from './services/firebase';
@@ -42,9 +43,7 @@ function AppRoutes() {
     if (user) {
       requestPushPermission();
       onForegroundMessage((payload) => {
-        import('react-hot-toast').then(({ default: toast }) => {
-          toast(payload.notification?.body || 'New notification', { icon: '🔔', duration: 5000 });
-        });
+        toast(payload.notification?.body || 'New notification', { icon: '🔔', duration: 5000 });
       });
     }
   }, [user]);
