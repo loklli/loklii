@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../services/supabase';
 import { ChevronLeft } from 'lucide-react';
 import LegalDisclaimer from '../../components/common/LegalDisclaimer';
 import OtpInput from 'react-otp-input';
@@ -9,20 +10,18 @@ import Logo from '../../components/common/Logo';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-const STEPS = ['Account', 'Location & Prefs', 'Identity', 'Terms & 2FA'];
+const STEPS = ['Account', 'Location & Prefs', 'Identity', 'Terms', 'Verify Email'];
 
 const DIETARY_OPTIONS = ['Halal', 'Kosher', 'Vegan', 'Vegetarian', 'Gluten-Free', 'Dairy-Free', 'Nut-Free', 'Keto'];
 
 export default function CustomerSignup() {
   const { t } = useTranslation();
-  const { signup } = useAuth();
+  const { setProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [recoveryCodes, setRecoveryCodes] = useState([]);
-  const [twoFASetup, setTwoFASetup] = useState(null);
   const [otp, setOtp] = useState('');
-  const [enable2FA, setEnable2FA] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
 
   const [form, setForm] = useState({
     email: '', phone: '', password: '', confirmPassword: '',
@@ -40,9 +39,21 @@ export default function CustomerSignup() {
       : [...form.dietaryPreferences, opt]);
   };
 
+  // Listen for email confirmation link click (auto-advances to profile creation)
+  useEffect(() => {
+    if (step !== 4) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
+        await createProfile(session.access_token);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [step]);
+
   const nextStep = () => {
     if (step === 0) {
-      if (!form.email || !form.password || !form.firstName || !form.lastName || !form.dateOfBirth) return toast.error('Please fill all fields.');
+      if (!form.email || !form.password || !form.firstName || !form.lastName || !form.dateOfBirth)
+        return toast.error('Please fill all required fields.');
       if (form.password !== form.confirmPassword) return toast.error('Passwords do not match.');
       if (form.password.length < 8) return toast.error('Password must be at least 8 characters.');
     }
@@ -53,39 +64,72 @@ export default function CustomerSignup() {
     if (!form.agreedToTerms) return toast.error(t('legal.must_agree'));
     setLoading(true);
     try {
-      const result = await signup({
-        email: form.email, phone: form.phone, password: form.password,
-        role: 'customer', firstName: form.firstName, lastName: form.lastName,
-        dateOfBirth: form.dateOfBirth, language: form.language,
+      const { error } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { role: 'customer' } },
       });
-      setRecoveryCodes(result.recoveryCodes);
-
-      await api.put('/customer/profile', {
-        city: form.city, state: form.state, zipCode: form.zipCode,
-        dietaryPreferences: form.dietaryPreferences, allergyNotes: form.allergyNotes,
-      });
-
-      if (enable2FA) {
-        const { data } = await api.post('/auth/2fa/setup');
-        setTwoFASetup(data);
-      } else {
-        toast.success('Welcome to Loklii!');
-        navigate('/browse');
-      }
+      if (error) throw error;
+      setSignupEmail(form.email);
+      setStep(4);
     } catch (err) {
-      toast.error(err.response?.data?.error || t('common.error'));
+      toast.error(err.message || 'Signup failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify2FA = async () => {
+  const handleVerifyOtp = async () => {
+    if (otp.length < 6) return toast.error('Enter the 6-digit code.');
+    setLoading(true);
     try {
-      await api.post('/auth/2fa/verify', { token: otp });
-      toast.success('Account created! Welcome to Loklii.');
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: signupEmail,
+        token: otp,
+        type: 'signup',
+      });
+      if (error) throw error;
+      await createProfile(data.session.access_token);
+    } catch (err) {
+      toast.error(err.message?.includes('expired') ? 'Code expired. Request a new one.' : 'Invalid code. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createProfile = async (accessToken) => {
+    try {
+      const { data } = await api.post('/auth/profile',
+        {
+          phone: form.phone,
+          role: 'customer',
+          firstName: form.firstName,
+          lastName: form.lastName,
+          dateOfBirth: form.dateOfBirth,
+          language: form.language,
+          city: form.city,
+          state: form.state,
+          zipCode: form.zipCode,
+          dietaryPreferences: form.dietaryPreferences,
+          allergyNotes: form.allergyNotes,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      setProfile(data.user);
+      toast.success('Welcome to Loklii!');
       navigate('/browse');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create profile. Please contact support.');
+    }
+  };
+
+  const resendOtp = async () => {
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email: signupEmail });
+      if (error) throw error;
+      toast.success('Verification email resent!');
     } catch {
-      toast.error('Invalid code.');
+      toast.error('Could not resend. Please try again.');
     }
   };
 
@@ -126,23 +170,15 @@ export default function CustomerSignup() {
               <p className="text-sm font-medium mb-2">Dietary Preferences</p>
               <div className="flex flex-wrap gap-2">
                 {DIETARY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => toggleDiet(opt)}
-                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${form.dietaryPreferences.includes(opt) ? 'bg-teal text-white border-teal' : 'bg-white text-gray-700 border-gray-300'}`}
-                  >
+                  <button key={opt} type="button" onClick={() => toggleDiet(opt)}
+                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${form.dietaryPreferences.includes(opt) ? 'bg-teal text-white border-teal' : 'bg-white text-gray-700 border-gray-300'}`}>
                     {opt}
                   </button>
                 ))}
               </div>
             </div>
-            <textarea
-              className="input-field h-20"
-              placeholder="Allergy notes (e.g. severe nut allergy)..."
-              value={form.allergyNotes}
-              onChange={(e) => set('allergyNotes', e.target.value)}
-            />
+            <textarea className="input-field h-20" placeholder="Allergy notes (e.g. severe nut allergy)..."
+              value={form.allergyNotes} onChange={(e) => set('allergyNotes', e.target.value)} />
           </div>
         );
       case 2:
@@ -157,41 +193,33 @@ export default function CustomerSignup() {
           </div>
         );
       case 3:
-        if (twoFASetup) {
-          return (
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-bold">{t('auth.two_fa')}</h2>
-              <img src={twoFASetup.qrCode} alt="QR Code" className="mx-auto w-48 h-48" />
-              <p className="text-xs text-center text-gray-500">Manual: <strong>{twoFASetup.secret}</strong></p>
-              <OtpInput
-                value={otp} onChange={setOtp} numInputs={6}
-                renderInput={(props) => <input {...props} className="input-field text-center !w-10 mx-1" />}
-                containerStyle="flex justify-center"
-              />
-              <button onClick={handleVerify2FA} className="btn-secondary">Verify & Finish</button>
-              {recoveryCodes.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                  <p className="text-xs font-bold text-yellow-800 mb-2">⚠️ Save these recovery codes somewhere safe.</p>
-                  <div className="grid grid-cols-2 gap-1">
-                    {recoveryCodes.map((code) => (
-                      <code key={code} className="text-xs bg-white px-2 py-1 rounded border border-yellow-300 font-mono">{code}</code>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        }
         return (
           <div className="flex flex-col gap-4">
             <h2 className="text-xl font-bold">Terms & Security</h2>
             <LegalDisclaimer agreed={form.agreedToTerms} onChange={(e) => set('agreedToTerms', e.target.checked)} />
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={enable2FA} onChange={(e) => setEnable2FA(e.target.checked)} className="h-4 w-4 accent-teal" />
-              <span className="text-sm text-gray-700">Enable Two-Factor Authentication (recommended)</span>
-            </label>
             <button onClick={handleSignup} disabled={loading || !form.agreedToTerms} className="btn-secondary">
               {loading ? t('common.loading') : 'Create Account'}
+            </button>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="flex flex-col gap-4 text-center">
+            <p className="text-5xl">📧</p>
+            <h2 className="text-xl font-bold">Verify your email</h2>
+            <p className="text-sm text-gray-500">
+              We sent a 6-digit code to <strong>{signupEmail}</strong>. Enter it below or click the link in the email.
+            </p>
+            <OtpInput
+              value={otp} onChange={setOtp} numInputs={6}
+              renderInput={(props) => <input {...props} className="input-field text-center !w-10 mx-1 text-lg" />}
+              containerStyle="flex justify-center"
+            />
+            <button onClick={handleVerifyOtp} disabled={loading || otp.length < 6} className="btn-secondary">
+              {loading ? 'Verifying...' : 'Verify & Finish'}
+            </button>
+            <button type="button" onClick={resendOtp} className="text-sm text-amber underline">
+              Resend code
             </button>
           </div>
         );
@@ -202,7 +230,7 @@ export default function CustomerSignup() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
-        {step > 0 && !twoFASetup ? (
+        {step > 0 && step < 4 ? (
           <button onClick={() => setStep((s) => s - 1)}><ChevronLeft size={24} /></button>
         ) : (
           <button onClick={() => navigate('/')}><ChevronLeft size={24} /></button>
@@ -219,7 +247,7 @@ export default function CustomerSignup() {
 
       <div className="flex-1 overflow-y-auto px-4 py-6">{renderStep()}</div>
 
-      {step < 3 && !twoFASetup && (
+      {step < 3 && (
         <div className="px-4 pb-8 pt-4 border-t border-gray-100">
           <button onClick={nextStep} className="btn-secondary w-full">{t('common.next')}</button>
         </div>

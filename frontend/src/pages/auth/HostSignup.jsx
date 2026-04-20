@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../services/supabase';
 import { ChevronLeft, CheckCircle } from 'lucide-react';
 import LegalDisclaimer from '../../components/common/LegalDisclaimer';
 import OtpInput from 'react-otp-input';
@@ -9,17 +10,16 @@ import Logo from '../../components/common/Logo';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-const STEPS = ['Account', 'Location', 'Services', 'Workspace', 'Identity', 'Terms & 2FA'];
+const STEPS = ['Account', 'Location', 'Services', 'Workspace', 'Identity & Terms', 'Verify Email'];
 
 export default function HostSignup() {
   const { t } = useTranslation();
-  const { signup } = useAuth();
+  const { setProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [recoveryCodes, setRecoveryCodes] = useState([]);
-  const [twoFASetup, setTwoFASetup] = useState(null);
   const [otp, setOtp] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
 
   const [form, setForm] = useState({
     email: '', phone: '', password: '', confirmPassword: '',
@@ -31,15 +31,24 @@ export default function HostSignup() {
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
-  const nextStep = async () => {
-    if (step === 0) {
-      if (!form.email || !form.password || !form.firstName || !form.lastName || !form.dateOfBirth) {
-        return toast.error('Please fill all fields.');
+  // Listen for email confirmation link click
+  useEffect(() => {
+    if (step !== 5) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session) {
+        await createProfile(session.access_token);
       }
+    });
+    return () => subscription.unsubscribe();
+  }, [step]);
+
+  const nextStep = () => {
+    if (step === 0) {
+      if (!form.email || !form.password || !form.firstName || !form.lastName || !form.dateOfBirth)
+        return toast.error('Please fill all fields.');
       if (form.password !== form.confirmPassword) return toast.error('Passwords do not match.');
       if (form.password.length < 8) return toast.error('Password must be at least 8 characters.');
     }
-    if (step === 4 && !form.agreedToTerms) return toast.error(t('legal.must_agree'));
     setStep((s) => s + 1);
   };
 
@@ -47,33 +56,70 @@ export default function HostSignup() {
     if (!form.agreedToTerms) return toast.error(t('legal.must_agree'));
     setLoading(true);
     try {
-      const result = await signup({
-        email: form.email, phone: form.phone, password: form.password,
-        role: 'host', firstName: form.firstName, lastName: form.lastName,
-        dateOfBirth: form.dateOfBirth, language: form.language,
+      const { error } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { role: 'host' } },
       });
-      setRecoveryCodes(result.recoveryCodes);
-
-      // Update location
-      await api.put('/host/profile', { city: form.city, state: form.state, zipCode: form.zipCode });
-
-      // Setup 2FA
-      const { data } = await api.post('/auth/2fa/setup');
-      setTwoFASetup(data);
+      if (error) throw error;
+      setSignupEmail(form.email);
+      setStep(5);
     } catch (err) {
-      toast.error(err.response?.data?.error || t('common.error'));
+      toast.error(err.message || 'Signup failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerify2FA = async () => {
+  const handleVerifyOtp = async () => {
+    if (otp.length < 6) return toast.error('Enter the 6-digit code.');
+    setLoading(true);
     try {
-      await api.post('/auth/2fa/verify', { token: otp });
-      toast.success('Account created! Welcome to Loklii.');
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: signupEmail,
+        token: otp,
+        type: 'signup',
+      });
+      if (error) throw error;
+      await createProfile(data.session.access_token);
+    } catch (err) {
+      toast.error(err.message?.includes('expired') ? 'Code expired. Request a new one.' : 'Invalid code. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createProfile = async (accessToken) => {
+    try {
+      const { data } = await api.post('/auth/profile',
+        {
+          phone: form.phone,
+          role: 'host',
+          firstName: form.firstName,
+          lastName: form.lastName,
+          dateOfBirth: form.dateOfBirth,
+          language: form.language,
+          city: form.city,
+          state: form.state,
+          zipCode: form.zipCode,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      setProfile(data.user);
+      toast.success('Welcome to Loklii! Complete your profile to go live.');
       navigate('/host/dashboard');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create profile. Please contact support.');
+    }
+  };
+
+  const resendOtp = async () => {
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email: signupEmail });
+      if (error) throw error;
+      toast.success('Verification email resent!');
     } catch {
-      toast.error('Invalid code. Try again.');
+      toast.error('Could not resend. Please try again.');
     }
   };
 
@@ -119,12 +165,9 @@ export default function HostSignup() {
             <h2 className="text-xl font-bold">What services will you offer?</h2>
             <p className="text-sm text-gray-500">You can add unlimited services after signup. Admin must approve each listing before it goes live.</p>
             <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl">Not allowed: medical, legal, firearms, drugs, adult content, auto repair.</p>
-            <textarea
-              className="input-field h-32"
+            <textarea className="input-field h-32"
               placeholder="e.g. Homemade tamales, henna art, math tutoring..."
-              value={form.services}
-              onChange={(e) => set('services', e.target.value)}
-            />
+              value={form.services} onChange={(e) => set('services', e.target.value)} />
           </div>
         );
       case 3:
@@ -141,49 +184,36 @@ export default function HostSignup() {
       case 4:
         return (
           <div className="flex flex-col gap-4">
-            <h2 className="text-xl font-bold">Identity Verification</h2>
-            <p className="text-sm text-gray-500">We use Stripe Identity to verify your ID and selfie. Your data is stored with Stripe only — never on our servers.</p>
-            <div className="bg-cream rounded-2xl p-6 text-center">
-              <p className="text-4xl mb-3">🪪</p>
-              <p className="text-sm text-gray-600">You can complete ID verification from your Host Dashboard after creating your account.</p>
+            <h2 className="text-xl font-bold">Identity Verification & Terms</h2>
+            <p className="text-sm text-gray-500">We use Stripe Identity to verify your ID and selfie. You can complete this from your Host Dashboard.</p>
+            <div className="bg-cream rounded-2xl p-4 text-center">
+              <p className="text-3xl mb-2">🪪</p>
+              <p className="text-sm text-gray-600">ID verification available in Host Dashboard after signup.</p>
             </div>
             <LegalDisclaimer agreed={form.agreedToTerms} onChange={(e) => set('agreedToTerms', e.target.checked)} />
+            <button onClick={handleSignup} disabled={loading || !form.agreedToTerms} className="btn-primary">
+              {loading ? t('common.loading') : 'Create Account'}
+            </button>
           </div>
         );
       case 5:
-        if (twoFASetup) {
-          return (
-            <div className="flex flex-col gap-4">
-              <h2 className="text-xl font-bold">{t('auth.two_fa')}</h2>
-              <p className="text-sm text-gray-600">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</p>
-              <img src={twoFASetup.qrCode} alt="QR Code" className="mx-auto w-48 h-48" />
-              <p className="text-xs text-center text-gray-500">Or enter secret manually: <strong>{twoFASetup.secret}</strong></p>
-              <p className="text-sm font-medium">{t('auth.enter_code')}</p>
-              <OtpInput
-                value={otp} onChange={setOtp} numInputs={6}
-                renderInput={(props) => <input {...props} className="input-field text-center !w-10 mx-1" />}
-                containerStyle="flex justify-center"
-              />
-              <button onClick={handleVerify2FA} className="btn-primary">Verify & Finish</button>
-              {recoveryCodes.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                  <p className="text-xs font-bold text-yellow-800 mb-2">⚠️ Save these recovery codes somewhere safe. You will not see them again.</p>
-                  <div className="grid grid-cols-2 gap-1">
-                    {recoveryCodes.map((code) => (
-                      <code key={code} className="text-xs bg-white px-2 py-1 rounded border border-yellow-300 font-mono">{code}</code>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        }
         return (
-          <div className="flex flex-col gap-4">
-            <h2 className="text-xl font-bold">Almost done!</h2>
-            <LegalDisclaimer agreed={form.agreedToTerms} onChange={(e) => set('agreedToTerms', e.target.checked)} />
-            <button onClick={handleSignup} disabled={loading || !form.agreedToTerms} className="btn-primary">
-              {loading ? t('common.loading') : 'Create Account & Setup 2FA'}
+          <div className="flex flex-col gap-4 text-center">
+            <p className="text-5xl">📧</p>
+            <h2 className="text-xl font-bold">Verify your email</h2>
+            <p className="text-sm text-gray-500">
+              We sent a 6-digit code to <strong>{signupEmail}</strong>. Enter it below or click the link in the email.
+            </p>
+            <OtpInput
+              value={otp} onChange={setOtp} numInputs={6}
+              renderInput={(props) => <input {...props} className="input-field text-center !w-10 mx-1 text-lg" />}
+              containerStyle="flex justify-center"
+            />
+            <button onClick={handleVerifyOtp} disabled={loading || otp.length < 6} className="btn-primary">
+              {loading ? 'Verifying...' : 'Verify & Finish'}
+            </button>
+            <button type="button" onClick={resendOtp} className="text-sm text-amber underline">
+              Resend code
             </button>
           </div>
         );
@@ -193,9 +223,8 @@ export default function HostSignup() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
-        {step > 0 && !twoFASetup ? (
+        {step > 0 && step < 5 ? (
           <button onClick={() => setStep((s) => s - 1)}><ChevronLeft size={24} /></button>
         ) : (
           <button onClick={() => navigate('/')}><ChevronLeft size={24} /></button>
@@ -204,7 +233,6 @@ export default function HostSignup() {
         <span className="ml-auto text-xs text-gray-500">Step {step + 1} of {STEPS.length}</span>
       </div>
 
-      {/* Progress */}
       <div className="px-4 pt-3">
         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div className="h-full bg-amber rounded-full transition-all" style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
@@ -220,12 +248,9 @@ export default function HostSignup() {
 
       <div className="flex-1 overflow-y-auto px-4 py-6">{renderStep()}</div>
 
-      {/* Nav buttons */}
-      {step < 5 && !twoFASetup && (
+      {step < 4 && (
         <div className="px-4 pb-8 pt-4 border-t border-gray-100">
-          <button onClick={nextStep} className="btn-primary w-full">
-            {step === STEPS.length - 2 ? 'Create Account' : t('common.next')}
-          </button>
+          <button onClick={nextStep} className="btn-primary w-full">{t('common.next')}</button>
         </div>
       )}
     </div>

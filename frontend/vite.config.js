@@ -59,6 +59,7 @@ export default defineConfig({
           'stripe-vendor': ['@stripe/stripe-js', '@stripe/react-stripe-js'],
           'i18n-vendor': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
           'ui-vendor': ['lucide-react', 'react-hot-toast', 'socket.io-client'],
+          'supabase-vendor': ['@supabase/supabase-js'],
         },
       },
     },

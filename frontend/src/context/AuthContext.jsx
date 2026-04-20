@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { supabase } from '../services/supabase';
 import api from '../services/api';
 import i18n from '../i18n';
 
@@ -7,57 +8,86 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [twoFaPending, setTwoFaPending] = useState(false);
+  const fetchingRef = useRef(false);
+
+  const applyLanguage = (lang) => {
+    if (!lang) return;
+    i18n.changeLanguage(lang);
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = lang;
+  };
+
+  const fetchProfile = async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    try {
+      const { data } = await api.get('/auth/me');
+      if (data.requires2FA) {
+        setTwoFaPending(true);
+        setUser(null);
+      } else {
+        setTwoFaPending(false);
+        setUser(data.user);
+        applyLanguage(data.user.preferredLanguage);
+      }
+    } catch (err) {
+      if (err.response?.status === 404) {
+        // Profile not yet created (mid-signup flow) — stay signed in but no user
+        setUser(null);
+      } else {
+        await supabase.auth.signOut();
+        setUser(null);
+      }
+    } finally {
+      fetchingRef.current = false;
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const stored = localStorage.getItem('loklii_user');
-    const token = localStorage.getItem('loklii_token');
-    if (stored && token) {
-      const parsed = JSON.parse(stored);
-      setUser(parsed);
-      if (parsed.preferredLanguage) {
-        i18n.changeLanguage(parsed.preferredLanguage);
-        document.documentElement.dir = parsed.preferredLanguage === 'ar' ? 'rtl' : 'ltr';
-        document.documentElement.lang = parsed.preferredLanguage;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
+        await fetchProfile();
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setTwoFaPending(false);
+        setLoading(false);
+      } else {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email, password, twoFaCode) => {
-    const { data } = await api.post('/auth/login', { email, password, twoFaCode });
-    if (data.requires2FA) return { requires2FA: true };
-    localStorage.setItem('loklii_token', data.token);
-    localStorage.setItem('loklii_user', JSON.stringify(data.user));
-    setUser(data.user);
-    if (data.user.preferredLanguage) {
-      i18n.changeLanguage(data.user.preferredLanguage);
-      document.documentElement.dir = data.user.preferredLanguage === 'ar' ? 'rtl' : 'ltr';
-    }
-    return data;
-  };
-
-  const signup = async (formData) => {
-    const { data } = await api.post('/auth/signup', formData);
-    localStorage.setItem('loklii_token', data.token);
-    localStorage.setItem('loklii_user', JSON.stringify(data.user));
-    setUser(data.user);
-    return data;
-  };
-
-  const logout = () => {
-    localStorage.removeItem('loklii_token');
-    localStorage.removeItem('loklii_user');
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
+    setTwoFaPending(false);
   };
 
   const updateUser = (updates) => {
-    const updated = { ...user, ...updates };
-    localStorage.setItem('loklii_user', JSON.stringify(updated));
-    setUser(updated);
+    setUser((prev) => prev ? { ...prev, ...updates } : updates);
+  };
+
+  // Called after successful 2FA verification during login
+  const completeTwoFALogin = async (code) => {
+    const { data } = await api.post('/auth/2fa/login', { token: code });
+    setUser(data.user);
+    setTwoFaPending(false);
+    applyLanguage(data.user.preferredLanguage);
+    return data.user;
+  };
+
+  // Called by signup pages after profile creation
+  const setProfile = (profile) => {
+    setUser(profile);
+    setTwoFaPending(false);
+    applyLanguage(profile.preferredLanguage);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, twoFaPending, logout, updateUser, completeTwoFALogin, setProfile }}>
       {children}
     </AuthContext.Provider>
   );

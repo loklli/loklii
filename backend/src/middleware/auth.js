@@ -1,4 +1,3 @@
-const jwt = require('jsonwebtoken');
 const supabase = require('../config/supabase');
 
 const authenticate = async (req, res, next) => {
@@ -6,21 +5,24 @@ const authenticate = async (req, res, next) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'No token provided' });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify via Supabase Auth (handles expiry, rotation automatically)
+    const { data: { user: sbUser }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !sbUser) return res.status(401).json({ error: 'Invalid or expired token' });
+
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, role, is_active, is_suspended, two_fa_enabled')
-      .eq('id', decoded.userId)
+      .select('id, role, is_active, is_suspended, two_fa_enabled, email, first_name, last_name, preferred_language')
+      .eq('id', sbUser.id)
       .single();
 
-    if (error || !user) return res.status(401).json({ error: 'Invalid token' });
+    if (error || !user) return res.status(401).json({ error: 'Profile not found' });
     if (!user.is_active) return res.status(403).json({ error: 'Account deactivated' });
     if (user.is_suspended) return res.status(403).json({ error: 'Account suspended' });
 
     req.user = { ...user, userId: user.id };
     next();
   } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Authentication failed' });
   }
 };
 
