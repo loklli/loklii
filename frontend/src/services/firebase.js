@@ -1,39 +1,28 @@
-const isConfigured = !!(
-  import.meta.env.VITE_FIREBASE_API_KEY &&
-  import.meta.env.VITE_FIREBASE_PROJECT_ID &&
-  import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID &&
-  import.meta.env.VITE_FIREBASE_APP_ID
-);
-
-let messaging = null;
-
-if (isConfigured) {
-  import('firebase/app').then(({ initializeApp }) => {
-    import('firebase/messaging').then(({ getMessaging }) => {
-      try {
-        const app = initializeApp({
-          apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-          appId: import.meta.env.VITE_FIREBASE_APP_ID,
-        });
-        messaging = getMessaging(app);
-      } catch (err) {
-        console.warn('[Firebase] Init failed:', err.message);
-      }
-    });
-  });
-}
-
 export async function requestPushPermission() {
-  if (!isConfigured || !messaging) return;
   try {
+    if (
+      !import.meta.env.VITE_FIREBASE_API_KEY ||
+      !import.meta.env.VITE_FIREBASE_PROJECT_ID ||
+      !import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ||
+      !import.meta.env.VITE_FIREBASE_APP_ID
+    ) return;
+
+    const { initializeApp } = await import('firebase/app');
+    const { getMessaging, getToken } = await import('firebase/messaging');
+
+    const app = initializeApp({
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    });
+
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') return;
 
-    const { getToken } = await import('firebase/messaging');
+    const messaging = getMessaging(app);
     const token = await getToken(messaging, {
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
     });
@@ -43,14 +32,38 @@ export async function requestPushPermission() {
       await api.post('/auth/push-token', { token, device: navigator.userAgent });
     }
   } catch (err) {
-    console.warn('[Firebase] Push permission failed:', err.message);
+    console.warn('[Firebase] Push setup failed:', err.message);
   }
 }
 
 export function onForegroundMessage(callback) {
-  if (!isConfigured || !messaging) return () => {};
-  import('firebase/messaging').then(({ onMessage }) => {
-    onMessage(messaging, callback);
+  if (
+    !import.meta.env.VITE_FIREBASE_API_KEY ||
+    !import.meta.env.VITE_FIREBASE_PROJECT_ID ||
+    !import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ||
+    !import.meta.env.VITE_FIREBASE_APP_ID
+  ) return () => {};
+
+  Promise.all([
+    import('firebase/app'),
+    import('firebase/messaging'),
+  ]).then(([{ initializeApp }, { getMessaging, onMessage }]) => {
+    try {
+      const app = initializeApp({
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+      });
+      onMessage(getMessaging(app), callback);
+    } catch (err) {
+      console.warn('[Firebase] Foreground message setup failed:', err.message);
+    }
+  }).catch((err) => {
+    console.warn('[Firebase] Import failed:', err.message);
   });
+
   return () => {};
 }

@@ -41,10 +41,12 @@ function AppRoutes() {
 
   useEffect(() => {
     if (user) {
-      requestPushPermission();
-      onForegroundMessage((payload) => {
-        toast(payload.notification?.body || 'New notification', { icon: '🔔', duration: 5000 });
-      });
+      try { requestPushPermission(); } catch (e) {}
+      try {
+        onForegroundMessage((payload) => {
+          toast(payload.notification?.body || 'New notification', { icon: '🔔', duration: 5000 });
+        });
+      } catch (e) {}
     }
   }, [user]);
 
