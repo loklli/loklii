@@ -29,7 +29,7 @@ export default function ForgotPassword() {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-screen bg-cream flex flex-col items-center justify-center px-6 text-center">
         <p className="text-5xl mb-4">📧</p>
         <h2 className="text-xl font-bold mb-2">Check your email</h2>
         <p className="text-gray-500 text-sm mb-6">We sent a password reset link to <strong>{email}</strong>. It expires in 15 minutes.</p>
@@ -39,7 +39,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-cream flex flex-col items-center justify-center px-6">
       <Logo size="md" />
       <h1 className="text-xl font-bold mt-6 mb-2">{t('auth.reset_password')}</h1>
       <p className="text-gray-500 text-sm mb-8 text-center">Enter your email and we'll send you a reset link.</p>

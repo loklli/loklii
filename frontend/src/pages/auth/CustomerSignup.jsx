@@ -228,7 +228,7 @@ export default function CustomerSignup() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-cream flex flex-col">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
         {step > 0 && step < 4 ? (
           <button onClick={() => setStep((s) => s - 1)}><ChevronLeft size={24} /></button>

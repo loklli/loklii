@@ -63,7 +63,7 @@ export default function LoginPage() {
 
   if (twoFaPending) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-12">
+      <div className="min-h-screen bg-cream flex flex-col items-center justify-center px-6 py-12">
         <Logo size="lg" />
         <h1 className="text-2xl font-bold mt-6 mb-2">{t('auth.two_fa')}</h1>
         <p className="text-gray-500 text-sm mb-8 text-center">Enter the 6-digit code from your authenticator app.</p>
@@ -83,7 +83,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-12">
+    <div className="min-h-screen bg-cream flex flex-col items-center justify-center px-6 py-12">
       <Logo size="lg" />
       <h1 className="text-2xl font-bold mt-6 mb-8">{t('auth.login')}</h1>
 
